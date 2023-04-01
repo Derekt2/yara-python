@@ -544,7 +544,7 @@ typedef struct
   PyObject* warnings;
   YR_RULES* rules;
   YR_RULE* iter_current_rule;
-  PyObject* stats;
+  YR_RULES_STATS* stats;
 } Rules;
 
 
@@ -2369,20 +2369,29 @@ static PyObject* Rules_save(
   Py_RETURN_NONE;
 }
 
-
 static PyObject* Rules_stats(
     PyObject* self,
     PyObject* args)
 {
+  PyObject* result;
   Rules* rules = (Rules*) self;
-  return rules->stats;
+  
+  result = PyDict_New();
+  printf("%f\n", rules->stats->ac_tables_size);
+  
+  PyDict_SetItemString(result, "num_rules", PyLong_FromLong(rules->stats->num_rules));
+  PyDict_SetItemString(result, "num_strings", PyLong_FromLong(rules->stats->num_strings));
+  PyDict_SetItemString(result, "ac_matches", PyLong_FromLong(rules->stats->ac_matches));
+  PyDict_SetItemString(result, "ac_tables_size", PyLong_FromLong(rules->stats->ac_tables_size));
+  return result;
 }
-
 
 static PyObject* Rules_profiling_info(
     PyObject* self,
     PyObject* args)
 {
+
+
 
 #ifdef PROFILING_ENABLED
   PyObject* object;
@@ -2649,8 +2658,8 @@ static PyObject* yara_compile(
 
   YR_COMPILER* compiler;
   YR_RULES* yara_rules;
+  YR_RULES_STATS mystats;
   FILE* fh;
-  YR_RULES_STATS stats;
 
   Rules* rules;
 
@@ -2664,7 +2673,6 @@ static PyObject* yara_compile(
   PyObject* externals = NULL;
   PyObject* error_on_warning = NULL;
   PyObject* include_callback = NULL;
-  PyObject* statresults;
 
   Py_ssize_t pos = 0;
 
@@ -2943,14 +2951,11 @@ static PyObject* yara_compile(
           rules->rules = yara_rules;
           rules->iter_current_rule = rules->rules->rules_table;
           rules->warnings = warnings;
-          statresults = PyDict_New();
-          yr_rules_get_stats(yara_rules, &stats);
-          PyDict_SetItemString(statresults, "num_rules", PyLong_FromLong(stats.num_rules));
-          PyDict_SetItemString(statresults, "num_strings", PyLong_FromLong(stats.num_strings));
-          PyDict_SetItemString(statresults, "ac_matches", PyLong_FromLong(stats.ac_matches));
-          PyDict_SetItemString(statresults, "ac_tables_size", PyLong_FromLong(stats.ac_tables_size));
-          rules->stats = statresults;
+          yr_rules_get_stats(yara_rules, &mystats);
+          printf("%d\n", mystats.ac_tables_size);
+          rules->stats = &mystats;
           
+
           if (externals != NULL && externals != Py_None)
             rules->externals = PyDict_Copy(externals);
 
